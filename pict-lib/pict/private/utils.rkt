@@ -1175,89 +1175,75 @@
              (else
               scaled-pict))]))
   
-(define scale
-  (case-lambda
-    [(p x-factor y-factor)
-     (define drawer (make-pict-drawer p))
-     (define new
-       (dc
-        (λ (dc x y)
-          (define t (send dc get-transformation))
-          (send dc scale x-factor y-factor)
-          (drawer dc
-                  (/ x x-factor)
-                  (/ y y-factor))
-          (send dc set-transformation t))
-        (* (pict-width p) x-factor)
-        (* (pict-height p) y-factor)
-        (* (pict-ascent p) y-factor)
-        (* (pict-descent p) y-factor)))
-     (make-pict (pict-draw new)
-                (pict-width new)
-                (pict-height new)
-                (pict-ascent new)
-                (pict-descent new)
-                (list (make-child p 0 0 x-factor y-factor 0 0))
-                #f
-                (pict-last p))]
-    [(p factor) (scale p factor factor)]))
+  (define scale
+    (case-lambda
+      [(p x-factor y-factor)
+       (transform p x-factor y-factor 0 0)]
+      [(p factor) (scale p factor factor)]))
 
-(define (shear p shear-x shear-y)
+  (define (shear p shear-x shear-y)
+    (transform p 1 1 shear-x shear-y))
+
+  (define (rotate p θ)
+    (transform p (cos θ) (cos θ) (- (sin θ)) (sin θ)))
+
+(define (transform p sx sy shear-x shear-y)
   (define drawer (make-pict-drawer p))
-  (define x-shift (* shear-x (pict-height p)))
-  (define y-shift (* shear-y (pict-width p)))
+  (define w (pict-width p))
+  (define h (pict-height p))
+  (define a (pict-ascent p))
+  (define d (pict-descent p))
+  (define dl (min 0
+                  (* w sx)
+                  (* h shear-x)
+                  (+ (* w sx)
+                     (* h shear-x))))
+  (define dr (max 0
+                  (* w sx)
+                  (* h shear-x)
+                  (+ (* h shear-x)
+                     (* sx w))))
+  (define dt (min 0
+                  (* h sy)
+                  (* w shear-y)
+                  (+ (* w shear-y)
+                     (* h sy))))
+  (define db (max 0
+                  (* h sy)
+                  (* w shear-y)
+                  (+ (* w shear-y)
+                     (* h sy))))
+  (define da
+    (- (* a sy)
+       (* shear-y w 1/2)))
+  (define dd
+    (- (* (- h d)
+          sy)
+       (* shear-y w 1/2)))
   (define new
     (dc
      (λ (dc dx dy)
        (define t (send dc get-transformation))
-       (send dc transform (vector 1 shear-y shear-x 1 (- dx (min 0 x-shift)) (- dy (min 0 y-shift))))
+       (send dc transform
+             (vector sx shear-y shear-x sy
+                     (- dx dl)
+                     (- dy dt)))
        (drawer dc 0 0)
        (send dc set-transformation t))
-     (+ (pict-width p) (abs x-shift))
-     (+ (pict-height p) (abs y-shift))
-     (pict-ascent p)
-     (pict-descent p)))
+     (- dr dl) (- db dt)
+     (min (- da dt) (- (- db dt) (- db dd)))
+     (min (- db da) (- db dd))))
   (make-pict (pict-draw new)
              (pict-width new)
              (pict-height new)
              (pict-ascent new)
              (pict-descent new)
-             (list (make-child p 0 0 1 1 shear-y shear-x))
+             (list (make-child p
+                               (- (* h shear-x) dl) 
+                               (max 0 (- db (* h sy)))
+                               sx sy shear-y shear-x))
              #f
              (pict-last p)))
-
-  (define (rotate p theta)
-    (let ([w (pict-width p)]
-          [h (pict-height p)]
-          [drawer (make-pict-drawer p)])
-      (let ([dl (min 0 (* w (cos theta)) (* h (sin theta)) (+ (* w (cos theta)) (* h (sin theta))))]
-            [dr (max 0 (* w (cos theta)) (* h (sin theta)) (+ (* w (cos theta)) (* h (sin theta))))]
-            [dt (min 0 (* w -1 (sin theta)) (* h (cos theta)) (+ (* w -1 (sin theta)) (* h (cos theta))))]
-            [db (max 0 (* w -1 (sin theta)) (* h (cos theta)) (+ (* w -1 (sin theta)) (* h (cos theta))))]
-            [da (- (* (pict-ascent p) (cos theta)) (* (sin theta) w 1/2))]
-            [dd (- (* (- (pict-height p) (pict-descent p)) (cos theta)) (* (sin theta) w 1/2))])
-        (let ([new (dc
-                    (lambda (dc x y)
-                      (let ([t (send dc get-transformation)])
-                        (send dc translate (- x dl) (- y dt))
-                        (send dc rotate theta)
-                        (drawer dc 0 0)
-                        (send dc set-transformation t)))
-                    (- dr dl) (- db dt) 
-                    (min (- da dt) (- (- db dt) (- db dd)))
-                    (min (- db da) (- db dd)))])
-          (make-pict (pict-draw new)
-		     (pict-width new)
-		     (pict-height new)
-		     (pict-ascent new)
-		     (pict-descent new)
-		     (list (make-child p 
-                                       (- (* h (sin theta)) dl) 
-                                       (max 0 (- db (* h (cos theta))))
-                                       (cos theta) (cos theta) 
-                                       (sin theta) (- (sin theta))))
-		     #f
-                     (pict-last p))))))
 
   (define cellophane
     (case-lambda

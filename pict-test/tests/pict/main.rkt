@@ -7,36 +7,10 @@
          pict/code
          pict/conditional
          pict/balloon
-         racket/draw racket/class)
-
-(define (->bitmap p)
-  (define b (pict->bitmap p))
-  (define w (send b get-width))
-  (define h (send b get-height))
-
-   (define its (make-bytes
-                (*
-                 w h
-                 4)
-                255))
-   (send b get-argb-pixels
-         0 0
-         (send b get-width)
-         (send b get-height)
-         its)
-   (define mask (send b get-loaded-mask))
-   (when mask
-     (send b get-argb-pixels 0 0 w h its #t))
-  its)
+         racket/draw racket/class
+         "utils.rkt")
 
 
-(define-check (check-pict=?/msg actual expected msg)
-  (unless (equal? (->bitmap actual) (->bitmap expected))
-    (fail-check msg)))
-(define-syntax check-pict=?
-  (syntax-parser
-    [(_ actual expected) #'(check-pict=?/msg actual expected "")]
-    [(_ actual expected msg) #'(check-pict=?/msg actual expected msg)]))
 
 (define-syntax (gen-case stx)
   (syntax-parse stx
@@ -49,7 +23,6 @@
              `(m ,(first i) ...)
              (m (if (null? (rest i)) (first i) (second i)) ...))]
            ...))]))
-
 
 (define (generate-pict)
   (define-values (l p)
@@ -663,3 +636,19 @@
 (check-not-exn
  (λ ()
    (unsafe-dc (λ (dc dx dy) (error 'ack-called!)) 10 10)))
+
+
+(test-case "negative scale+symmetry=identity"
+  (check-pict=?
+   (scale (rectangle 10 10) -1)
+   (rectangle 10 10))
+  (check-pict=?
+   (scale (rectangle 10 1) 1 -1)
+   (rectangle 10 1))
+  (check-pict=?
+   (scale (rectangle 10 1) -1 1)
+   (rectangle 10 1))
+  (check-pict=?
+   (scale (rectangle 10 1) -1 -1)
+   (rectangle 10 1)))
+ 
