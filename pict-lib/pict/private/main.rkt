@@ -412,6 +412,8 @@
          pin-under
          drop-below-ascent
          lift-above-baseline
+         converted-pict?
+         converted-pict-parent
 
          (except-out (all-from-out "utils.rkt")
                    

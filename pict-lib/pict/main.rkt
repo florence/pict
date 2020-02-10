@@ -9,6 +9,8 @@
 
 (provide
  (except-out (all-from-out "private/main.rkt")
+             converted-pict?
+             converted-pict-parent
              blank
              launder
              linewidth
@@ -55,6 +57,8 @@
  pin-arrows-line
  pin-line
  (contract-out
+  [converted-pict? predicate/c]
+  [converted-pict-parent (-> converted-pict? pict-convertible?)]
   [explain
    (->* (pict-convertible?)
         (#:border (or/c #f string? (is-a?/c color%))

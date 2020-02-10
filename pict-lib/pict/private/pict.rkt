@@ -151,7 +151,9 @@
          prop:pict-convertible prop:pict-convertible? pict-convertible? pict-convert
          pict-convertible-ref
          pict-path-element=?
-         pict-deserialize-info)
+         pict-deserialize-info
+         converted-pict?
+         converted-pict-parent)
 
 ;; ; ----------------------------------------
 
